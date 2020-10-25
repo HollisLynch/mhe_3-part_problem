@@ -3,9 +3,6 @@
 #include <vector>
 #include <fstream>
 #include <numeric>
-#include <list>
-#include <array>
-#include <tuple>
 
 using namespace std;
 
