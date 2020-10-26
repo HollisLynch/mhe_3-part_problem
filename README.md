@@ -9,4 +9,4 @@ Możemy dodać liczbę do podzbioru jeżeli:
 2) bieżący element + bieżąca suma <= target bucket sum
 
 Musimy też utworzyć nową tablice bool, która będzie śledzić elementy, które są używane do tej pory, abyśmy nie użyli je ponownie.
-Zdefuniujemy też funkcję Partition, która zwróci czy da się podzielić dany zbiór liczb na 3 podzbiory z elementami sumy których są sobie równe.
+Zdefuniujemy też funkcję Partition, która pokaże czy da się podzielić dany zbiór liczb na 3 podzbiory z elementami sumy których są sobie równe.
