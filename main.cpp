@@ -6,6 +6,8 @@
 
 using namespace std;
 
+vector<int> nums;
+
 bool isPartitionIsPossible(vector<int> nums) {
 
     // nie możemy podzielić na 3 podzbiory i zwrócimy false.
@@ -20,29 +22,37 @@ bool isPartitionIsPossible(vector<int> nums) {
 	return !(sum % 3);
 }
 
-int main() {
+int targetSum(vector<int> nums) {
+    int sum = accumulate(begin(nums), end(nums), 0);
+    return sum/3;
+}
+
+void readFile() {
 
     string str;
 
-    vector<int> nums;
-
-    string file = "test.txt";
-
-    ifstream coeff(file);
+    ifstream coeff("testt.txt");
 
     if (coeff.is_open()) {
         while (!coeff.eof()) {
             getline(coeff, str, ',');
             nums.push_back(stof(str));
-
         }
+        cout << "Ilość elementów = " << nums.size() << endl;
         coeff.close();
     }
     else {
         cout << "Błąd odczytu pliku";
     }
+}
 
-    cout << "Ilość elementów = " << nums.size() << endl;
+int main() {
+
+//    bool used[10];
+    string wynik;
+
+    readFile();
+
     cout << "Czy 3-partition jest możliwa dla " << "[ ";
 
     for (int j = 0; j < nums.size(); j++) {
@@ -51,17 +61,18 @@ int main() {
 
     cout << "] ?" << endl;
 
-    string wynik;
-
     if (isPartitionIsPossible(nums))
         wynik = "Tak";
     else
         wynik = "Nie";
 
-    cout << wynik;
+    cout << wynik << endl;
+    cout << "TargetSum każdego podzbioru: " << targetSum(nums) << endl;
 
     ofstream out("output.txt");
+
     out << wynik;
+
     out.close();
 
     return 0;
