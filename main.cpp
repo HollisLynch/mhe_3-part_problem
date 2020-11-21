@@ -8,8 +8,6 @@
 using namespace std;
 
 vector<int> nums;
-//bool used[100];
-
 
 int sum(const vector<int> nums) {
     int sum = accumulate(begin(nums), end(nums), 0);
@@ -74,18 +72,31 @@ void generateNums() {
 
 }
 
-auto hill_climbing_alg = [](auto problem) {
-    
-};
+auto generate_random_solution (){
+    random_device random_device;
+    mt19937 random_engine(random_device());
+    uniform_int_distribution<bool> distribution_0_1(false, true);
 
-bool partition(int k, const vector<int> nums, bool *used, int targetSum, int currentBucketSum){
+    auto const randomNumber = distribution_0_1(random_engine);
 
-    while (k>1) {
+    return randomNumber;
+}
 
+bool hill_climbing_alg() {
+    auto best = generate_random_solution();
+
+    cout << best;
+}
+
+bool partition(const vector<int> nums, bool *used, int targetSum){
+    int k = 3;
+    int currentBucketSum = 0;
+
+    while (k>0) {
         if (k == 1) {
+            cout << "k (1 if): " << k << endl;
             return true;
         }
-
         if (currentBucketSum == targetSum) {
             currentBucketSum = 0;
             k -= 1;
@@ -93,10 +104,33 @@ bool partition(int k, const vector<int> nums, bool *used, int targetSum, int cur
 
         for (int i = 0; i < nums.size(); i++) {
             if (!used[i] && currentBucketSum + nums[i] <= targetSum) {
+                cout << "k (2 if): " << k << endl;
                 used[i] = true;
                 currentBucketSum += nums[i];
-                return true;
             }
+                used[i] = false;
+        }
+    }
+    return false;
+}
+
+bool partitionRec(int k, const vector<int> nums, bool *used, int targetSum, int currentBucketSum, int start){
+
+    if(k==1) {
+        cout << "k (1 if): " << k << endl;
+        return true;
+    }
+
+    if(currentBucketSum == targetSum)
+        return partitionRec(k-1, nums, used, targetSum, 0, 0);
+
+    for(int i=start; i<nums.size(); i++){
+
+        if(!used[i] && currentBucketSum+nums[i]<=targetSum){
+            used[i] = true;
+            cout << "k (2 if): " << k << endl;
+            if(partitionRec(k, nums, used, targetSum, currentBucketSum+nums[i], i+1))
+                return true;
             used[i] = false;
         }
     }
@@ -113,7 +147,8 @@ bool isPartitionIsPossible(const vector<int> nums, bool used[]) {
         return false;
     }
 
-    return partition(3, nums, used, targetSum(nums), 0);
+//    return partitionRec(3, nums, used, targetSum(nums), 0, 0);
+    return partition(nums, used, targetSum(nums));
 }
 
 bool run() {
@@ -173,6 +208,7 @@ bool run() {
 int main() {
 
     run();
+//    hill_climbing_alg();
 
     return 0;
 }
