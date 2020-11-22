@@ -8,6 +8,9 @@
 using namespace std;
 
 vector<int> nums;
+vector<int> subset_1;
+vector<int> subset_2;
+vector<int> subset_3;
 
 int sum(const vector<int> nums) {
     int sum = accumulate(begin(nums), end(nums), 0);
@@ -87,55 +90,69 @@ bool hill_climbing_alg() {
 
     cout << best;
 }
+void display_vector(const vector<int> &v)
+{
+    copy(v.begin(), v.end(),
+              std::ostream_iterator<int>(cout, "\n"));
+}
+void showPartitions() {
+    cout << "subset_1:\n";
+    display_vector(subset_1);
 
+    cout << "subset_2:\n";
+    display_vector(subset_2);
+
+    cout << "subset_3:\n";
+    display_vector(subset_3);
+}
 bool partition(const vector<int> nums, bool *used, int targetSum){
-    int k = 3;
     int currentBucketSum = 0;
+    int j = 3;
+    int start = 0;
 
-    while (k>0) {
-        if (k == 1) {
-            cout << "k (1 if): " << k << endl;
-            return true;
-        }
-        if (currentBucketSum == targetSum) {
-            currentBucketSum = 0;
-            k -= 1;
-        }
+    while (j>0) {
 
-        for (int i = 0; i < nums.size(); i++) {
-            if (!used[i] && currentBucketSum + nums[i] <= targetSum) {
-                cout << "k (2 if): " << k << endl;
-                used[i] = true;
-                currentBucketSum += nums[i];
+        for (int i = start; i < nums.size(); i++) {
+            if (targetSum == currentBucketSum) {
+                j-=1;
+                currentBucketSum = 0;
+                start = 0;
             }
+
+            if (!used[i] && currentBucketSum + nums[i] <= targetSum) {
+                currentBucketSum += nums[i];
+
+                if (j == 3) {
+                    used[i] = true;
+                    subset_1.push_back(nums[i]);
+                    cout << "nums[i] for 1 bucket " << nums[i] << endl;
+                    cout << "cs = " << currentBucketSum << endl;
+                }
+                else if (j == 2) {
+                    used[i] = true;
+                    subset_2.push_back(nums[i]);
+                    cout << "nums[i] for 2 bucket " << nums[i] << endl;
+                    cout << "cs = " << currentBucketSum << endl;
+                    start = i+1;
+                }
+                else if (j == 1) {
+                    used[i] = true;
+                    subset_3.push_back(nums[i]);
+                    cout << "nums[i] for 3 bucket " << nums[i] << endl;
+                    cout << "cs = " << currentBucketSum << endl;
+                    if (targetSum == currentBucketSum) {
+                        return true;
+                    }
+                }
+            }
+            else {
                 used[i] = false;
+            }
         }
     }
     return false;
 }
 
-bool partitionRec(int k, const vector<int> nums, bool *used, int targetSum, int currentBucketSum, int start){
-
-    if(k==1) {
-        cout << "k (1 if): " << k << endl;
-        return true;
-    }
-
-    if(currentBucketSum == targetSum)
-        return partitionRec(k-1, nums, used, targetSum, 0, 0);
-
-    for(int i=start; i<nums.size(); i++){
-
-        if(!used[i] && currentBucketSum+nums[i]<=targetSum){
-            used[i] = true;
-            cout << "k (2 if): " << k << endl;
-            if(partitionRec(k, nums, used, targetSum, currentBucketSum+nums[i], i+1))
-                return true;
-            used[i] = false;
-        }
-    }
-    return false;
-}
 
 bool isPartitionIsPossible(const vector<int> nums, bool used[]) {
 
@@ -147,7 +164,6 @@ bool isPartitionIsPossible(const vector<int> nums, bool used[]) {
         return false;
     }
 
-//    return partitionRec(3, nums, used, targetSum(nums), 0, 0);
     return partition(nums, used, targetSum(nums));
 }
 
@@ -187,6 +203,7 @@ bool run() {
 
     if (canPartition) {
         wynik = "Można podzielić zbiór na 3 podzbiory z sumą ";
+        showPartitions();
     }
     else {
         wynik = "Nie można podzielić zbiór na 3 podzbiory z sumą ";
