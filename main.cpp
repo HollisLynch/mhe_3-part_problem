@@ -75,20 +75,24 @@ void generateNums() {
 
 }
 
-auto generate_random_solution (){
-    random_device random_device;
-    mt19937 random_engine(random_device());
-    uniform_int_distribution<bool> distribution_0_1(false, true);
+auto generate_random_solution (vector<int> numbers){
+    generate_n(back_inserter(numbers), nums.size(), randomNumberBetween(1, 12));
 
-    auto const randomNumber = distribution_0_1(random_engine);
-
-    return randomNumber;
+    return numbers;
 }
 
-bool hill_climbing_alg() {
-    auto best = generate_random_solution();
+auto hill_climbing_alg(const vector<int> nums) {
+    vector<int> numbers;
+    generate_n(back_inserter(numbers), nums.size(), randomNumberBetween(1, 12));
 
-    cout << best;
+    cout << nums.size();
+
+    for (int number : numbers)
+    {
+        cout << number << ' ';
+    }
+
+    return numbers;
 }
 void display_vector(const vector<int> &v)
 {
@@ -105,44 +109,46 @@ void showPartitions() {
     cout << "subset_3:\n";
     display_vector(subset_3);
 }
-bool partition(const vector<int> nums, bool *used, int targetSum){
+bool partition(const vector<int> nums, const int targetSum){
     int currentBucketSum = 0;
     int j = 3;
-    int start = 0;
+    bool used[100];
 
     while (j>0) {
 
-        for (int i = start; i < nums.size(); i++) {
-            if (targetSum == currentBucketSum) {
-                j-=1;
-                currentBucketSum = 0;
-                start = 0;
-            }
+        for (int i = 0; i < nums.size(); i++) {
 
-            if (!used[i] && currentBucketSum + nums[i] <= targetSum) {
+            if ((currentBucketSum + nums[i] <= targetSum) && j == 3) {
+                used[i] = true;
                 currentBucketSum += nums[i];
-
-                if (j == 3) {
-                    used[i] = true;
-                    subset_1.push_back(nums[i]);
-                    cout << "nums[i] for 1 bucket " << nums[i] << endl;
-                    cout << "cs = " << currentBucketSum << endl;
+                subset_1.push_back(nums[i]);
+                cout << "nums[i] for 1 bucket " << nums[i] << "\n";
+                cout << "cs = " << currentBucketSum << "\n";
+                if (targetSum == currentBucketSum) {
+                    j-=1;
+                    currentBucketSum = 0;
+                    i++;
                 }
-                else if (j == 2) {
-                    used[i] = true;
-                    subset_2.push_back(nums[i]);
-                    cout << "nums[i] for 2 bucket " << nums[i] << endl;
-                    cout << "cs = " << currentBucketSum << endl;
-                    start = i+1;
+            }
+            else if (!used[i] && (currentBucketSum + nums[i] <= targetSum) && j == 2) {
+                used[i] = true;
+                currentBucketSum += nums[i];
+                subset_2.push_back(nums[i]);
+                cout << "nums[i] for 2 bucket " << nums[i] << "\n";
+                cout << "cs = " << currentBucketSum << "\n";
+                if (targetSum == currentBucketSum) {
+                    j-=1;
+                    currentBucketSum = 0;
                 }
-                else if (j == 1) {
-                    used[i] = true;
-                    subset_3.push_back(nums[i]);
-                    cout << "nums[i] for 3 bucket " << nums[i] << endl;
-                    cout << "cs = " << currentBucketSum << endl;
-                    if (targetSum == currentBucketSum) {
+            }
+            else if (!used[i] && (currentBucketSum + nums[i] <= targetSum) && j == 1) {
+                used[i] = true;
+                currentBucketSum += nums[i];
+                subset_3.push_back(nums[i]);
+                cout << "nums[i] for 3 bucket " << nums[i] << "\n";
+                cout << "cs = " << currentBucketSum << "\n";
+                if (targetSum == currentBucketSum) {
                         return true;
-                    }
                 }
             }
             else {
@@ -154,7 +160,7 @@ bool partition(const vector<int> nums, bool *used, int targetSum){
 }
 
 
-bool isPartitionIsPossible(const vector<int> nums, bool used[]) {
+bool isPartitionIsPossible(const vector<int> nums) {
 
     if (nums.size()<3) {
         return false;
@@ -164,14 +170,45 @@ bool isPartitionIsPossible(const vector<int> nums, bool used[]) {
         return false;
     }
 
-    return partition(nums, used, targetSum(nums));
+    return partition(nums, targetSum(nums));
+}
+
+void goal_func(const vector<int> nums) {
+    string wynik;
+    using namespace chrono;
+
+    int n = nums.size();
+    bool used[n];
+    bool canPartition;
+
+//    steady_clock::time_point start = steady_clock::now();
+    canPartition = isPartitionIsPossible(nums);
+//    steady_clock::time_point end = steady_clock::now();
+
+    if (canPartition) {
+        wynik = "Można podzielić zbiór na 3 podzbiory z sumą ";
+        showPartitions();
+    }
+    else {
+        wynik = "Nie można podzielić zbiór na 3 podzbiory z sumą ";
+    }
+
+    wynik += to_string(targetSum(nums)) + "\n";
+    cout << wynik << endl;
+
+//    duration<double> time_span = duration_cast<duration<double>>(end - start);
+//    duration<double, milli> fp_ms = time_span;
+//
+//    cout << "isPartitionIsPossible(nums) duration: " << time_span.count() << " sec or " << fp_ms.count() << " ms";
+//
+//    wynik += to_string(fp_ms.count()) + " ms";
+
+    writeToFile(wynik);
 }
 
 bool run() {
 
-    using namespace chrono;
 
-    string wynik;
     int arg;
 
     cout << "Execute:\n1 - with random array\n2 - with array from file\n";
@@ -194,38 +231,24 @@ bool run() {
 
     cout << "Suma elementów: " << sum(nums) << endl;
 
-    int n = nums.size();
-    bool used[n*2];
+    cout << "Execute:\n1 - goal function\n2 - hill-climbing\n";
+    cin >> arg;
 
-    steady_clock::time_point start = steady_clock::now();
-    bool canPartition = isPartitionIsPossible(nums, used);
-    steady_clock::time_point end = steady_clock::now();
-
-    if (canPartition) {
-        wynik = "Można podzielić zbiór na 3 podzbiory z sumą ";
-        showPartitions();
+    switch (arg) {
+        case 1:
+            goal_func(nums);
+            break;
+        case 2:
+            hill_climbing_alg(nums);
+            break;
+        default:
+            return false;
     }
-    else {
-        wynik = "Nie można podzielić zbiór na 3 podzbiory z sumą ";
-    }
-
-    wynik += to_string(targetSum(nums)) + "\n";
-    cout << wynik << endl;
-
-    duration<double> time_span = duration_cast<duration<double>>(end - start);
-    duration<double, milli> fp_ms = time_span;
-
-    cout << "isPartitionIsPossible(nums) duration: " << time_span.count() << " sec or " << fp_ms.count() << " ms";
-
-    wynik += to_string(fp_ms.count()) + " ms";
-
-    writeToFile(wynik);
 }
 
 int main() {
 
     run();
-//    hill_climbing_alg();
 
     return 0;
 }
