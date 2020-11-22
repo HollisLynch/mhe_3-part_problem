@@ -112,9 +112,10 @@ void showPartitions() {
 bool partition(const vector<int> nums, const int targetSum){
     int currentBucketSum = 0;
     int j = 3;
-    bool used[100];
+    const int n = nums.size();
+    bool used[n];
 
-    while (j>0) {
+    while (j > 0) {
 
         for (int i = 0; i < nums.size(); i++) {
 
@@ -125,40 +126,36 @@ bool partition(const vector<int> nums, const int targetSum){
                 cout << "nums[i] for 1 bucket " << nums[i] << "\n";
                 cout << "cs = " << currentBucketSum << "\n";
                 if (targetSum == currentBucketSum) {
-                    j-=1;
+                    j -= 1;
                     currentBucketSum = 0;
                     i++;
                 }
-            }
-            else if (!used[i] && (currentBucketSum + nums[i] <= targetSum) && j == 2) {
+            } else if (!used[i] && (currentBucketSum + nums[i] <= targetSum) && j == 2) {
                 used[i] = true;
                 currentBucketSum += nums[i];
                 subset_2.push_back(nums[i]);
                 cout << "nums[i] for 2 bucket " << nums[i] << "\n";
                 cout << "cs = " << currentBucketSum << "\n";
                 if (targetSum == currentBucketSum) {
-                    j-=1;
+                    j -= 1;
                     currentBucketSum = 0;
                 }
-            }
-            else if (!used[i] && (currentBucketSum + nums[i] <= targetSum) && j == 1) {
+            } else if (!used[i] && (currentBucketSum + nums[i] <= targetSum) && j == 1) {
                 used[i] = true;
                 currentBucketSum += nums[i];
                 subset_3.push_back(nums[i]);
                 cout << "nums[i] for 3 bucket " << nums[i] << "\n";
                 cout << "cs = " << currentBucketSum << "\n";
                 if (targetSum == currentBucketSum) {
-                        return true;
+                    return true;
                 }
-            }
-            else {
+            } else {
                 used[i] = false;
             }
         }
     }
     return false;
 }
-
 
 bool isPartitionIsPossible(const vector<int> nums) {
 
@@ -177,8 +174,8 @@ void goal_func(const vector<int> nums) {
     string wynik;
     using namespace chrono;
 
-    int n = nums.size();
-    bool used[n];
+
+
     bool canPartition;
 
 //    steady_clock::time_point start = steady_clock::now();
@@ -208,8 +205,8 @@ void goal_func(const vector<int> nums) {
 
 bool run() {
 
-
     int arg;
+
 
     cout << "Execute:\n1 - with random array\n2 - with array from file\n";
     cin >> arg;
@@ -231,18 +228,27 @@ bool run() {
 
     cout << "Suma elementów: " << sum(nums) << endl;
 
-    cout << "Execute:\n1 - goal function\n2 - hill-climbing\n";
-    cin >> arg;
+    while (true) {
+        cout << "Execute:\n1 - goal function\n2 - hill-climbing\n";
+        cin >> arg;
 
-    switch (arg) {
-        case 1:
-            goal_func(nums);
-            break;
-        case 2:
-            hill_climbing_alg(nums);
-            break;
-        default:
-            return false;
+        switch (arg) {
+            case 1:
+                goal_func(nums);
+                break;
+            case 2:
+                hill_climbing_alg(nums);
+                break;
+            default:
+                return false;
+        }
+
+        if (arg == 0) {
+            return 0;
+        }
+        subset_1.clear();
+        subset_2.clear();
+        subset_3.clear();
     }
 }
 
