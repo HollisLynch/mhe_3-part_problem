@@ -21,7 +21,7 @@ class Problem {
 public:
     vector<int> nums;
 
-    int sum(const vector<int> nums) {
+    int sum(vector<int> nums) {
         int sum = accumulate(begin(nums), end(nums), 0);
         return sum;
     }
@@ -64,11 +64,11 @@ public:
         int low;
         int high;
 
-        cout << "Podaj rozmiar wektora: ";
+        cout << "Podaj rozmiar wektora (n/3): ";
         cin >> n;
         cout << "Podaj przedział: ";
         cin >> low >> high;
 
-        generate_n(back_inserter(nums), n, randomNumberBetween(low, high));
+        generate_n(back_inserter(nums), n/3, randomNumberBetween(low, high));
     }
 };
