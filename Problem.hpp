@@ -4,7 +4,7 @@
 #include <fstream>
 #include <numeric>
 #include <random>
-
+#include <list>
 using namespace std;
 
 auto randomNumberBetween = [](int low, int high)
@@ -17,9 +17,12 @@ auto randomNumberBetween = [](int low, int high)
     return randomFunc;
 };
 
-class Problem {
-public:
+class Problem : public vector<int> {
+
+};
+
     vector<int> nums;
+
 
     int sum(vector<int> nums) {
         int sum = accumulate(begin(nums), end(nums), 0);
@@ -37,10 +40,10 @@ public:
         }
     }
 
-    void readFile() {
+    void readFile(string file) {
 
         string str;
-        ifstream f("test.txt");
+        ifstream f(file);
 
         if (f.is_open()) {
             while (!f.eof()) {
@@ -71,4 +74,3 @@ public:
 
         generate_n(back_inserter(nums), n/3, randomNumberBetween(low, high));
     }
-};
