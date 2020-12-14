@@ -45,21 +45,50 @@ auto randomNumberBetween = [](int low, int high)
 };
 
 auto mutation=[](double p_mut, auto chromosome) {
-    static uniform_real_distribution<double> dist (0, 1.0);
-    for (auto i: chromosome) {
-        if (dist(rg) < p_mut) {
-            i = 1 - i;
-        }
-    }
+//    static uniform_real_distribution<double> dist (0, 1.0);
+//    for (auto i: chromosome) {
+//        if (dist(rg) < p_mut) {
+//            i = 1 - i;
+//        }
+//    }
     return chromosome;
 };
 
-auto crossover(vector<string> v) {
-    return v;
+auto int_to_string_vector(vector<int> indexes) {
+    vector<string> bit_v;
+    vector<int> res;
+
+    for (int i = 0; i<indexes.size(); i++) {
+        bitset<2> b(indexes.at(i));
+        bit_v.push_back(b.to_string());
+    }
+//    cout << "bits: ";
+//    for (int i = 0; i<bit_v.size(); i++) {
+//        cout << bit_v.at(i) << " ";
+//    }
+//    cout << endl;
+    return bit_v;
 }
 
-auto selection=[](auto g) {
-    return g;
+auto crossover(vector<string> v, int cross_point) {
+    int indexes_list[] = {1,0,0,2,0,1,2,1};
+    vector<int> indexes (indexes_list, indexes_list + sizeof(indexes_list) / sizeof(int) );
+    vector<string> bit_v = int_to_string_vector(indexes);
+    vector<vector<string>> children;
+    vector<string> off1;
+    vector<string> off2;
+
+    copy(bit_v.begin(), bit_v.begin() + cross_point, back_inserter(off1));
+    copy(v.begin() + cross_point, v.end(), back_inserter(off1));
+    copy(v.begin(), v.begin() + cross_point, back_inserter(off2));
+    copy(bit_v.begin() + cross_point, bit_v.end(), back_inserter(off2));
+    children.push_back(off1);
+    children.push_back(off2);
+    return children;
+}
+
+auto selection(vector<string> v) {
+    return v;
 };
 
 double goal(vector<int> x) {
@@ -79,22 +108,6 @@ auto decode=[](vector<string> pop) {
     return res;
 };
 
-auto int_to_string_vector(vector<int> indexes) {
-    vector<string> bit_v;
-    vector<int> res;
-
-    for (int i = 0; i<indexes.size(); i++) {
-        bitset<2> b(indexes.at(i));
-        bit_v.push_back(b.to_string());
-    }
-    cout << "bits: ";
-    for (int i = 0; i<bit_v.size(); i++) {
-        cout << bit_v.at(i) << " ";
-    }
-    cout << endl;
-    return bit_v;
-}
-
 auto generate_init_pop() {
     int nums_list[] =    {0,4,8,3,7,5,2,6};
     int indexes_list[] = {0,1,1,2,0,0,2,3};
@@ -112,20 +125,28 @@ auto generate_init_pop() {
 }
 
 auto genetic_alg = [](auto calculate_pop_fitness, auto generate_init_pop, auto selection, auto crossover, auto mutation, auto iterations) {
-    vector<int> population = generate_init_pop();
-    vector<double> pop_fitness(population.size());
+    vector<string> population = generate_init_pop();
+    for (int i = 0; i<population.size(); i++) {
+        cout << population.at(i) << " ";
+    }
+    cout << "\n";
+    auto offspring = crossover(population, 3);
+    cout << "off1: ";
+    for (int i = 0; i<offspring[0].size(); i++) {
+        cout << offspring[0][i] << " ";
+    }
+    cout << "  off2: ";
+    for (int i = 0; i<offspring[1].size(); i++) {
+        cout << offspring[1][i] << " ";
+    }
     for (int iteration = 0; iteration < iterations; iteration++)
     {
-        cout << "[" << iteration << "]";
-        for (int i = 0; i<population.size(); i++) {
-            pop_fitness[i] = calculate_pop_fitness(population[i]);
-        }
-        vector<int> parents = selection(population);
-        vector<int> offspring = crossover(parents);
+        auto parents = selection(population);
+        auto offspring = crossover(parents, 3);
         offspring = mutation(0.1, offspring);
-        pop_fitness = calculate_pop_fitness(offspring);
+        auto pop_fitness = calculate_pop_fitness(decode(offspring[0]));
     }
-    return pop_fitness;
+    return offspring;
 };
 
 auto vector_to_subvectors(vector<int> nums, vector<int> indexes) {
