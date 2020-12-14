@@ -144,9 +144,10 @@ auto genetic_alg = [](auto calculate_pop_fitness, auto generate_init_pop, auto s
         auto parents = selection(population);
         auto offspring = crossover(parents, 3);
         offspring = mutation(0.1, offspring);
-        auto pop_fitness = calculate_pop_fitness(decode(offspring[0]));
+        auto pop_fitness = calculate_pop_fitness(offspring);
+        population = pop_fitness;
     }
-    return offspring;
+    return population;
 };
 
 auto vector_to_subvectors(vector<int> nums, vector<int> indexes) {
