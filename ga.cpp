@@ -1,29 +1,13 @@
 #include <iostream>
+#include <string>
+#include <vector>
+#include <numeric>
 #include <random>
 #include <sstream>
-#include <fstream>
-#include <bitset>
 
-using namespace std;
-random_device device;
-mt19937 rg(device());
-
-vector<int> sum_subvectors(vector<vector<int>> mat) {
-    vector<int> result;
-    for (int i = 0; i<3; i++) {
-        int suma = 0;
-        for(int j = 0; j < mat[i].size(); j++)
-        {
-            cout << mat[i][j] << " ";
-            suma += mat[i][j];
-
-        }
-        cout << " -> suma: " << suma;
-        result.push_back(suma);
-        cout << endl;
-    }
-    return result;
-}
+std::random_device r;
+std::default_random_engine e1(r());
+std::mt19937 rand_gen(192987432);
 
 namespace ranges
 {
@@ -44,162 +28,239 @@ auto randomNumberBetween = [](int low, int high)
     return randomFunc;
 };
 
-auto mutation=[](double p_mut, auto chromosome) {
-//    static uniform_real_distribution<double> dist (0, 1.0);
-//    for (auto i: chromosome) {
-//        if (dist(rg) < p_mut) {
-//            i = 1 - i;
-//        }
-//    }
-    return chromosome;
+struct specimen_t
+{
+    std::vector<int> chromosome;
+    double fit;
+    specimen_t(int n = 0)
+    {
+        chromosome.resize(n);
+    }
+    void randomize()
+    {
+        ranges::generate(chromosome, randomNumberBetween(0, 1));
+    }
+    void print()
+    {
+        using namespace std;
+        for (int i = 0; i<chromosome.size(); i++) {
+            cout << chromosome.at(i);
+            if (i%2!=0) {
+                cout << " ";
+            }
+        }
+    }
+
+    std::vector<int> decode() {
+        using namespace std;
+        int nums_list[] = {0,4,8,3,7,5,2,6};
+        vector<int> nums(nums_list, nums_list + sizeof(nums_list)/sizeof(int));
+        vector<int> subset_1;
+        vector<int> subset_2;
+        vector<int> subset_3;
+
+        vector<int> indexes;
+        for (int i = 0; i<chromosome.size(); i++) {
+            if (i%2!=0) {
+                ostringstream oss;
+                oss << chromosome.at(i-1);
+                oss << chromosome.at(i);
+                indexes.push_back(strtol(oss.str().c_str(), nullptr, 2));
+            }
+        }
+
+        for (int j = 0; j < indexes.size(); j++) {
+            if (indexes.at(j) == 0) {
+                subset_1.push_back(nums.at(j));
+            }
+            if (indexes.at(j) == 1) {
+                subset_2.push_back(nums.at(j));
+            }
+            if (indexes.at(j) == 2) {
+                subset_3.push_back(nums.at(j));
+            }
+            else if (indexes.at(j) > 2){
+                subset_3.push_back(nums.at(j));
+            }
+        }
+
+        vector<int> res;
+        res.push_back(accumulate(subset_1.begin(), subset_1.end(), 0));
+        res.push_back(accumulate(subset_2.begin(), subset_2.end(), 0));
+        res.push_back(accumulate(subset_3.begin(), subset_3.end(), 0));
+        return res;
+    }
 };
 
-auto int_to_string_vector(vector<int> indexes) {
-    vector<string> bit_v;
-    vector<int> res;
-
-    for (int i = 0; i<indexes.size(); i++) {
-        bitset<2> b(indexes.at(i));
-        bit_v.push_back(b.to_string());
+auto generate_init_pop = []() {
+    std::vector<specimen_t> xy;
+    for (int i = 0; i < 4; i++)
+    {
+        xy.push_back(16);
+        xy[i].randomize();
     }
-//    cout << "bits: ";
-//    for (int i = 0; i<bit_v.size(); i++) {
-//        cout << bit_v.at(i) << " ";
-//    }
-//    cout << endl;
-    return bit_v;
-}
-
-auto crossover(vector<string> v, int cross_point) {
-    int indexes_list[] = {1,0,0,2,0,1,2,1};
-    vector<int> indexes (indexes_list, indexes_list + sizeof(indexes_list) / sizeof(int) );
-    vector<string> bit_v = int_to_string_vector(indexes);
-    vector<vector<string>> children;
-    vector<string> off1;
-    vector<string> off2;
-
-    copy(bit_v.begin(), bit_v.begin() + cross_point, back_inserter(off1));
-    copy(v.begin() + cross_point, v.end(), back_inserter(off1));
-    copy(v.begin(), v.begin() + cross_point, back_inserter(off2));
-    copy(bit_v.begin() + cross_point, bit_v.end(), back_inserter(off2));
-    children.push_back(off1);
-    children.push_back(off2);
-    return children;
-}
-
-auto selection(vector<string> v) {
-    return v;
+    return xy;
 };
 
-double goal(vector<int> x) {
-    sort(x.begin(), x.end(), greater <>());
-    return ((double)x.at(0)/(double)x.at(1))/(double) x.at(2);
-}
-
-double calculate_pop_fitness(vector<int> x) {
-    return 1/1-goal(x);
-}
-
-auto decode=[](vector<string> pop) {
-    vector<int> res;
-    for (int i = 0; i<pop.size(); i++) {
-        res.push_back(strtol(pop.at(i).c_str(), nullptr, 2));
-    }
-    return res;
+auto fitness = [](std::vector<int> res) {
+    sort(res.begin(), res.end(), std::greater <>());
+    auto goal = (double)res.at(0)/(double)res.at(1)/(double) res.at(2);
+    return 1/1-goal;
 };
 
-auto generate_init_pop() {
-    int nums_list[] =    {0,4,8,3,7,5,2,6};
-    int indexes_list[] = {0,1,1,2,0,0,2,3};
-    vector<int> nums (nums_list, nums_list + sizeof(nums_list) / sizeof(int) );
-    vector<int> indexes (indexes_list, indexes_list + sizeof(indexes_list) / sizeof(int) );
-    auto bit_v = int_to_string_vector(indexes);
-    string bit_str;
-    ostringstream oss;
-    copy(bit_v.begin(), bit_v.end()-1,ostream_iterator<string>(oss, ""));
-    oss << bit_v.back();
-    bit_str = oss.str();
-    cout << "chromosome: " << bit_str << "\n";
-
-    return bit_v;
+std::vector<specimen_t> calculate_pop_fitness(std::vector<specimen_t> population)
+{
+    std::vector<specimen_t> ret;
+    ret.reserve(population.size());
+    std::cout << "fit:\n";
+    for (int i = 0; i< population.size(); i++)
+    {
+        population.at(i).fit = fitness(population.at(i).decode());
+        ret.push_back(population.at(i));
+        std::cout << population.at(i).fit << "\n";
+    }
+    std::cout << "-------\n";
+    return ret;
 }
 
-auto genetic_alg = [](auto calculate_pop_fitness, auto generate_init_pop, auto selection, auto crossover, auto mutation, auto iterations) {
-    vector<string> population = generate_init_pop();
-    for (int i = 0; i<population.size(); i++) {
-        cout << population.at(i) << " ";
+auto genetic_alg = [](auto fitness, auto generate_init_pop, auto selection, auto crossover, auto mutation) {
+    using namespace std;
+    auto population = generate_init_pop();
+    cout << "population:\n";
+    for (int i = 0; i< population.size(); i++) {
+        population.at(i).print();
+        cout << "\n";
     }
-    cout << "\n";
-    auto offspring = crossover(population, 3);
-    cout << "off1: ";
-    for (int i = 0; i<offspring[0].size(); i++) {
-        cout << offspring[0][i] << " ";
-    }
-    cout << "  off2: ";
-    for (int i = 0; i<offspring[1].size(); i++) {
-        cout << offspring[1][i] << " ";
-    }
-    for (int iteration = 0; iteration < iterations; iteration++)
+    population = calculate_pop_fitness(population);
+    for (int iteration = 0; iteration < 10; iteration++)
     {
         auto parents = selection(population);
-        auto offspring = crossover(parents, 3);
-        offspring = mutation(0.1, offspring);
-        auto pop_fitness = calculate_pop_fitness(offspring);
-        population = pop_fitness;
+        auto offspring = crossover(parents);
+        offspring = mutation(offspring);
+        population = calculate_pop_fitness(offspring);
+        auto d =  population.at(1).decode();
+        for (int i = 0; i< population.size(); i++) {
+            population.at(i).print();
+            cout << "\n";
+            d = population.at(i).decode();
+            for (int j = 0; j< d.size(); j++) {
+                cout << j << ": " << d.at(j) << "\n";
+            }
+        }
     }
     return population;
 };
 
-auto vector_to_subvectors(vector<int> nums, vector<int> indexes) {
-    vector<vector<int>> mat;
-    vector<int> v1;
-    vector<int> v2;
-    vector<int> v3;
-
-    for (int j = 0; j < indexes.size(); j++) {
-        if (indexes.at(j) == 0) {
-            v1.push_back(nums.at(j));
+auto selection_tournament = [](auto population) {
+    decltype(population) selected;
+    std::uniform_int_distribution<int> dist(0, population.size() - 1);
+    for (int c = 0; c < population.size(); c++)
+    {
+        decltype(population) tournament;
+        for (int t = 0; t < 2; t++)
+        {
+            tournament.push_back(population.at(dist(rand_gen)));
         }
-        if (indexes.at(j) == 1) {
-            v2.push_back(nums.at(j));
-        }
-        if (indexes.at(j) == 2) {
-            v3.push_back(nums.at(j));
-        }
-        else if (indexes.at(j) > 2){
-            v3.push_back(nums.at(j));
-        }
+        sort(tournament.begin(), tournament.end(), [](auto a, auto b) {
+            return fitness(a.decode()) > fitness(b.decode());
+        });
+        selected.push_back(tournament.at(0));
     }
-    mat.push_back(v1);
-    mat.push_back(v2);
-    mat.push_back(v3);
+    return selected;
+};
 
-    return mat;
-}
+auto selection_roulette = [](auto pop) {
+    auto selection_roulette = [](auto population) {
+        using namespace std;
+        decltype(population) selected_specimens;
+        double sum_fitness = accumulate(population.begin(), population.end(), 0.0, [](auto a, auto b) { return a + b.fit; });
 
-int main() {
-//    int nums_list[] =    {0,4,8,3,7,5,2,6};
-//    int indexes_list[] = {0,1,1,2,0,0,2,3};
-//    vector<int> nums (nums_list, nums_list + sizeof(nums_list) / sizeof(int) );
-//    vector<int> indexes (indexes_list, indexes_list + sizeof(indexes_list) / sizeof(int) );
-//
-//    auto string_bit_vector = int_to_string_vector(indexes);
-//    auto chromosome = generate_init_pop(string_bit_vector);
+        uniform_real_distribution<double> dist(0.0, sum_fitness);
+        for (int c = 0; c < population.size(); c++)
+        {
+            double r = dist(rand_gen);
+            double s = 0.0;
+            for (unsigned int i = 0; i < population.size(); i++)
+            {
+                s += population[i].fit;
+                if (r < s)
+                {
+                    selected_specimens.push_back(population.at(i));
+                    break;
+                }
+            }
+        }
+        return selected_specimens;
+    };
+    return selection_roulette;
+};
 
-//    auto cross = crossover(string_bit_vector);
-//
-//    cout << "crossover: ";
-//    for (int i = 0; i<cross.size(); i++) {
-//        cout << cross.at(i) << " ";
-//    }
+auto crossover_one_point = [](auto population, double p = 0.9) {
+    using namespace std;
+    decltype(population) crossed;
+    uniform_real_distribution<double> rr(0.0, 1.0);
+    for (int i = 0; i< (population.size()-1); i+=2) {
+        auto c_1 = population.at(i);
+        auto c_2 = population.at(i+1);
+        if (rr(rand_gen) < p) {
+            uniform_int_distribution<int> dist(0, c_1.chromosome.size() - 1);
+            auto cross_point = dist(rand_gen);
 
-//    auto subvectors = vector_to_subvectors(nums, indexes);
-//
-//    auto sums = sum_subvectors(subvectors);
-//
-//    cout << "fitness: " << calculate_pop_fitness(sums) << "\n";
+            for (int g = cross_point; g < c_1.chromosome.size(); g++)
+            {
+                swap(c_1.chromosome[g], c_2.chromosome[g]);
+            }
+        }
+        crossed.push_back(c_1);
+        crossed.push_back(c_2);
+    }
+    return crossed;
+};
 
-    genetic_alg(calculate_pop_fitness, generate_init_pop, selection, crossover, mutation, 10);
-    cout << endl;
+auto crossover_two_point = [](auto population, double p = 0.9) {
+    using namespace std;
+    decltype(population) crossed;
+    uniform_real_distribution<double> rr(0.0, 1.0);
+    for (int i = 0; i< (population.size()-1); i+=2) {
+        auto c_1 = population.at(i);
+        auto c_2 = population.at(i+1);
+        if (rr(rand_gen) < p) {
+            uniform_int_distribution<int> dist(0, c_1.chromosome.size() - 1);
+            int cross_point1 = dist(rand_gen);
+            int cross_point2 = dist(rand_gen);
+            if (cross_point1 > cross_point2)
+                swap(cross_point1,cross_point2);
+
+            for (int g = cross_point1; g < cross_point2; g++)
+            {
+                swap(c_1.chromosome[g], c_2.chromosome[g]);
+            }
+        }
+        crossed.push_back(c_1);
+        crossed.push_back(c_2);
+    }
+    return crossed;
+};
+
+auto mutate = [](auto population, double p = 0.1) {
+    using namespace std;
+    decltype(population) mutated;
+    uniform_real_distribution<double> rr(0.0, 1.0);
+    for (int i = 0; i< population.size(); i++) {
+        auto c = population.at(i);
+        for (int j = 0; j<c.chromosome.size(); j++) {
+            if (rr(rand_gen) < p) {
+                c.chromosome[j] = 1 - c.chromosome[j];
+            }
+        }
+        mutated.push_back(c);
+    }
+    return mutated;
+};
+
+int main(int argc, char** argv) {
+
+    genetic_alg(fitness, generate_init_pop, selection, crossover_two_point, mutate);
+
     return 0;
 }
