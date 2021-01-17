@@ -4,10 +4,26 @@
 #include <numeric>
 #include <random>
 #include <sstream>
+#include <map>
 
 std::random_device r;
 std::default_random_engine e1(r());
 std::mt19937 rand_gen(192987432);
+
+std::map<std::string, std::string> process_args(int argc, char **argv)
+{
+    std::map<std::string, std::string> args;
+    std::string argname = "-p";
+    args[argname] = "2";
+    for (auto arg : std::vector<std::string>(argv + 1, argv + argc))
+    {
+        if (arg.size() && arg[0] == '-')
+            argname = arg;
+        else
+            args[argname] = arg;
+    }
+    return args;
+}
 
 namespace ranges
 {
@@ -53,7 +69,7 @@ struct specimen_t
 
     std::vector<int> decode() {
         using namespace std;
-        int nums_list[] = {0,4,8,3,7,5,2,6};
+        int nums_list[] = {21,45,42,8,12,16,25,15};
         vector<int> nums(nums_list, nums_list + sizeof(nums_list)/sizeof(int));
         vector<int> subset_1;
         vector<int> subset_2;
@@ -92,9 +108,9 @@ struct specimen_t
     }
 };
 
-auto generate_init_pop = []() {
+auto generate_init_pop = [](int pop_size) {
     std::vector<specimen_t> xy;
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < pop_size; i++)
     {
         xy.push_back(16);
         xy[i].randomize();
@@ -104,8 +120,8 @@ auto generate_init_pop = []() {
 
 auto fitness = [](std::vector<int> res) {
     sort(res.begin(), res.end(), std::greater <>());
-    auto goal = (double)res.at(0)/(double)res.at(1)/(double) res.at(2);
-    return 1/1-goal;
+    auto goal = ((double)res.at(0)/(double)res.at(1)/(double) res.at(2));
+    return 1/(1+goal)+1;
 };
 
 std::vector<specimen_t> calculate_pop_fitness(std::vector<specimen_t> population)
@@ -123,20 +139,36 @@ std::vector<specimen_t> calculate_pop_fitness(std::vector<specimen_t> population
     return ret;
 }
 
-auto genetic_alg = [](auto fitness, auto generate_init_pop, auto selection, auto crossover, auto mutation) {
+auto mutate = [](auto population, double p = 0.1) {
     using namespace std;
-    auto population = generate_init_pop();
+    decltype(population) mutated;
+    uniform_real_distribution<double> rr(0.0, 1.0);
+    for (int i = 0; i< population.size(); i++) {
+        auto c = population.at(i);
+        for (int j = 0; j<c.chromosome.size(); j++) {
+            if (rr(rand_gen) < p) {
+                c.chromosome[j] = 1 - c.chromosome[j];
+            }
+        }
+        mutated.push_back(c);
+    }
+    return mutated;
+};
+
+auto genetic_alg = [](auto fitness, int pop_size, auto selection, auto crossover, double mut_prob, int iterations, double prob_cross) {
+    using namespace std;
+    auto population = generate_init_pop(pop_size);
     cout << "population:\n";
     for (int i = 0; i< population.size(); i++) {
         population.at(i).print();
         cout << "\n";
     }
     population = calculate_pop_fitness(population);
-    for (int iteration = 0; iteration < 10; iteration++)
+    for (int iteration = 0; iteration < iterations; iteration++)
     {
         auto parents = selection(population);
-        auto offspring = crossover(parents);
-        offspring = mutation(offspring);
+        auto offspring = crossover(parents, prob_cross);
+        offspring = mutate(offspring, mut_prob);
         population = calculate_pop_fitness(offspring);
         auto d =  population.at(1).decode();
         for (int i = 0; i< population.size(); i++) {
@@ -152,6 +184,7 @@ auto genetic_alg = [](auto fitness, auto generate_init_pop, auto selection, auto
 };
 
 auto selection_tournament = [](auto population) {
+    std::cout << "tournament\n";
     decltype(population) selected;
     std::uniform_int_distribution<int> dist(0, population.size() - 1);
     for (int c = 0; c < population.size(); c++)
@@ -169,34 +202,33 @@ auto selection_tournament = [](auto population) {
     return selected;
 };
 
-auto selection_roulette = [](auto pop) {
-    auto selection_roulette = [](auto population) {
-        using namespace std;
-        decltype(population) selected_specimens;
-        double sum_fitness = accumulate(population.begin(), population.end(), 0.0, [](auto a, auto b) { return a + b.fit; });
+auto selection_roulette = [](auto population) {
+    using namespace std;
+    cout << "roulette\n";
+    decltype(population) selected_specimens;
+    double sum_fitness = accumulate(population.begin(), population.end(), 0.0, [](auto a, auto b) { return a + b.fit; });
 
-        uniform_real_distribution<double> dist(0.0, sum_fitness);
-        for (int c = 0; c < population.size(); c++)
+    uniform_real_distribution<double> dist(0.0, sum_fitness);
+    for (int c = 0; c < population.size(); c++)
+    {
+        double r = dist(rand_gen);
+        double s = 0.0;
+        for (int i = 0; i < population.size(); i++)
         {
-            double r = dist(rand_gen);
-            double s = 0.0;
-            for (unsigned int i = 0; i < population.size(); i++)
+            s += population[i].fit;
+            if (r < s)
             {
-                s += population[i].fit;
-                if (r < s)
-                {
-                    selected_specimens.push_back(population.at(i));
-                    break;
-                }
+                selected_specimens.push_back(population.at(i));
+                break;
             }
         }
-        return selected_specimens;
-    };
-    return selection_roulette;
+    }
+    return selected_specimens;
 };
 
 auto crossover_one_point = [](auto population, double p = 0.9) {
     using namespace std;
+    std::cout << "one_point crossover\n";
     decltype(population) crossed;
     uniform_real_distribution<double> rr(0.0, 1.0);
     for (int i = 0; i< (population.size()-1); i+=2) {
@@ -219,6 +251,7 @@ auto crossover_one_point = [](auto population, double p = 0.9) {
 
 auto crossover_two_point = [](auto population, double p = 0.9) {
     using namespace std;
+    std::cout << "two_point crossover\n";
     decltype(population) crossed;
     uniform_real_distribution<double> rr(0.0, 1.0);
     for (int i = 0; i< (population.size()-1); i+=2) {
@@ -242,25 +275,79 @@ auto crossover_two_point = [](auto population, double p = 0.9) {
     return crossed;
 };
 
-auto mutate = [](auto population, double p = 0.1) {
-    using namespace std;
-    decltype(population) mutated;
-    uniform_real_distribution<double> rr(0.0, 1.0);
-    for (int i = 0; i< population.size(); i++) {
-        auto c = population.at(i);
-        for (int j = 0; j<c.chromosome.size(); j++) {
-            if (rr(rand_gen) < p) {
-                c.chromosome[j] = 1 - c.chromosome[j];
-            }
-        }
-        mutated.push_back(c);
-    }
-    return mutated;
+auto experiment_run = [](auto method_f, std::map<std::string, std::string> args) {
+    auto ret_list = method_f(args);
 };
 
 int main(int argc, char** argv) {
+    using namespace std;
+    std::map<std::string, std::string> args = process_args(argc, argv);
 
-    genetic_alg(fitness, generate_init_pop, selection, crossover_two_point, mutate);
+    if (args["-selection"] == "r")
+    {
+        auto res = genetic_alg(fitness, (args.count("-p") ? stoi(args["-p"]) : 4), selection_roulette,
+                               crossover_two_point, (args.count("-m") ? stod(args["-m"]) : 0.1),
+                               (args.count("-i") ? stoi(args["-i"]) : 10),
+                               (args.count("-cross") ? stod(args["-cross"]) : 0.9));
+
+        auto result = std::max_element(res.begin(), res.end(), [&](auto a, auto b) {
+            return fitness(a.decode()) < fitness(b.decode());
+        });
+        cout << "best_fitness: " << result->fit << endl;
+        result->print();
+        cout << "\n";
+        experiment_run([&](auto args) {
+            return result; }, args);
+    }
+    if (args["-selection"] == "t")
+    {
+        auto res = genetic_alg(fitness, (args.count("-p") ? stoi(args["-p"]) : 4), selection_tournament,
+                               crossover_two_point, (args.count("-m") ? stod(args["-m"]) : 0.1),
+                               (args.count("-i") ? stoi(args["-i"]) : 10),
+                               (args.count("-cross") ? stod(args["-cross"]) : 0.9));
+
+        auto result = std::max_element(res.begin(), res.end(), [&](auto a, auto b) {
+            return fitness(a.decode()) < fitness(b.decode());
+        });
+        cout << "best_fitness: " << result->fit << endl;
+        result->print();
+        cout << "\n";
+        experiment_run([&](auto args) {
+            return result; }, args);
+    }
+    if (args["-crossover"] == "1")
+    {
+        auto res = genetic_alg(fitness, (args.count("-p") ? stoi(args["-p"]) : 4), selection_tournament,
+                               crossover_one_point, (args.count("-m") ? stod(args["-m"]) : 0.1),
+                               (args.count("-i") ? stoi(args["-i"]) : 10),
+                               (args.count("-cross") ? stod(args["-cross"]) : 0.9));
+
+        auto result = std::max_element(res.begin(), res.end(), [&](auto a, auto b) {
+            return fitness(a.decode()) < fitness(b.decode());
+        });
+        cout << "best_fitness: " << result->fit << endl;
+        result->print();
+        cout << "\n";
+        experiment_run([&](auto args) {
+            return result; }, args);
+
+    }
+    if (args["-crossover"] == "2")
+    {
+        auto res = genetic_alg(fitness, (args.count("-p") ? stoi(args["-p"]) : 4), selection_tournament,
+                               crossover_two_point, (args.count("-m") ? stod(args["-m"]) : 0.1),
+                               (args.count("-i") ? stoi(args["-i"]) : 10),
+                               (args.count("-cross") ? stod(args["-cross"]) : 0.9));
+
+        auto result = std::max_element(res.begin(), res.end(), [&](auto a, auto b) {
+            return fitness(a.decode()) < fitness(b.decode());
+        });
+        cout << "best_fitness: " << result->fit << endl;
+        result->print();
+        cout << "\n";
+        experiment_run([&](auto args) {
+            return result; }, args);
+    }
 
     return 0;
 }
