@@ -5,6 +5,10 @@
 #include <random>
 #include <sstream>
 #include <map>
+#include <array>
+#include <sstream>
+#include <fstream>
+#include <omp.h>
 
 std::random_device r;
 std::default_random_engine e1(r());
@@ -48,6 +52,7 @@ struct specimen_t
 {
     std::vector<int> chromosome;
     double fit;
+
     specimen_t(int n = 0)
     {
         chromosome.resize(n);
@@ -69,8 +74,8 @@ struct specimen_t
 
     std::vector<int> decode() {
         using namespace std;
-        int nums_list[] = {21,45,42,8,12,16,25,15};
-        vector<int> nums(nums_list, nums_list + sizeof(nums_list)/sizeof(int));
+        int nums_tab[] = {1,5,2,8,1,6,5,5,4,7,4,4,1,2,2,4,9,6,9,7,4,2,3,2,4,2,2,2,1,2};
+        vector<int> nums(nums_tab, nums_tab + sizeof(nums_tab)/sizeof(int));
         vector<int> subset_1;
         vector<int> subset_2;
         vector<int> subset_3;
@@ -112,7 +117,9 @@ auto generate_init_pop = [](int pop_size) {
     std::vector<specimen_t> xy;
     for (int i = 0; i < pop_size; i++)
     {
-        xy.push_back(16);
+        // push_back will construct a temporary object, which will then get moved into vector
+        // emplace_back will forward the argument along and construct it directly in place with no copies or moves
+        xy.emplace_back(60);
         xy[i].randomize();
     }
     return xy;
@@ -121,21 +128,26 @@ auto generate_init_pop = [](int pop_size) {
 auto fitness = [](std::vector<int> res) {
     sort(res.begin(), res.end(), std::greater <>());
     auto goal = ((double)res.at(0)/(double)res.at(1)/(double) res.at(2));
-    return 1/(1+goal)+1;
+    return 1/(1+goal);
 };
 
 std::vector<specimen_t> calculate_pop_fitness(std::vector<specimen_t> population)
 {
-    std::vector<specimen_t> ret;
-    ret.reserve(population.size());
-    std::cout << "fit:\n";
-    for (int i = 0; i< population.size(); i++)
-    {
-        population.at(i).fit = fitness(population.at(i).decode());
-        ret.push_back(population.at(i));
-        std::cout << population.at(i).fit << "\n";
-    }
-    std::cout << "-------\n";
+    using namespace std;
+    vector<specimen_t> ret;
+    //#pragma omp parallel
+    //{
+        ret.resize(population.size());
+        cout << "fit:\n";
+        #pragma parallel omp for
+        for (int i = 0; i < population.size(); i++) {
+            population.at(i).fit = fitness(population.at(i).decode());
+            #pragma omp critical
+            ret[i] = population.at(i);
+            //cout << i << ": " << population.at(i).fit << "\n";
+        }
+    //}
+    cout << "-------\n";
     return ret;
 }
 
@@ -171,14 +183,15 @@ auto genetic_alg = [](auto fitness, int pop_size, auto selection, auto crossover
         offspring = mutate(offspring, mut_prob);
         population = calculate_pop_fitness(offspring);
         auto d =  population.at(1).decode();
-        for (int i = 0; i< population.size(); i++) {
-            population.at(i).print();
-            cout << "\n";
-            d = population.at(i).decode();
-            for (int j = 0; j< d.size(); j++) {
-                cout << j << ": " << d.at(j) << "\n";
-            }
-        }
+//        for (int i = 0; i< population.size(); i++) {
+//            cout << i << ": ";
+//            population.at(i).print();
+//            cout << "\n";
+//            d = population.at(i).decode();
+//            for (int j = 0; j< d.size(); j++) {
+//                cout << j << ": " << d.at(j) << "\n";
+//            }
+//        }
     }
     return population;
 };
@@ -325,8 +338,11 @@ int main(int argc, char** argv) {
         auto result = std::max_element(res.begin(), res.end(), [&](auto a, auto b) {
             return fitness(a.decode()) < fitness(b.decode());
         });
+        auto worst = std::min_element(res.begin(), res.end(), [&](auto a, auto b) {
+            return fitness(a.decode()) < fitness(b.decode());
+        });
         cout << "best_fitness: " << result->fit << endl;
-        result->print();
+        cout << "worst_fitness: " << worst->fit << endl;
         cout << "\n";
         experiment_run([&](auto args) {
             return result; }, args);
@@ -334,19 +350,32 @@ int main(int argc, char** argv) {
     }
     if (args["-crossover"] == "2")
     {
-        auto res = genetic_alg(fitness, (args.count("-p") ? stoi(args["-p"]) : 4), selection_tournament,
-                               crossover_two_point, (args.count("-m") ? stod(args["-m"]) : 0.1),
-                               (args.count("-i") ? stoi(args["-i"]) : 10),
-                               (args.count("-cross") ? stod(args["-cross"]) : 0.9));
+        ofstream file("res_with_pragma_19.txt");
+        using namespace chrono;
+        for (int i = 0; i<25; i++) {
+            steady_clock::time_point start = steady_clock::now();
+            auto res = genetic_alg(fitness, (args.count("-p") ? stoi(args["-p"]) : 4), selection_tournament,
+                                   crossover_two_point, (args.count("-m") ? stod(args["-m"]) : 0.1),
+                                   (args.count("-i") ? stoi(args["-i"]) : 10),
+                                   (args.count("-cross") ? stod(args["-cross"]) : 0.9));
+            steady_clock::time_point end = steady_clock::now();
+            duration<double> time_span = duration_cast<duration<double>>(end - start);
+            duration<double, milli> fp_ms = time_span;
+            cout << "duration: " << time_span.count() << " sec or " << fp_ms.count() << " ms\n";
+            auto best = std::max_element(res.begin(), res.end(), [&](auto a, auto b) {
+                return fitness(a.decode()) < fitness(b.decode());
+            });
+            auto worst = std::min_element(res.begin(), res.end(), [&](auto a, auto b) {
+                return fitness(a.decode()) < fitness(b.decode());
+            });
+            cout << "best_fitness: " << best->fit << endl;
+            file << best->fit << " " << time_span.count() << "\n";
+            cout << "worst_fitness: " << worst->fit << endl;
+            cout << "\n";
+            experiment_run([&](auto args) {
+                return best; }, args);
+        }
 
-        auto result = std::max_element(res.begin(), res.end(), [&](auto a, auto b) {
-            return fitness(a.decode()) < fitness(b.decode());
-        });
-        cout << "best_fitness: " << result->fit << endl;
-        result->print();
-        cout << "\n";
-        experiment_run([&](auto args) {
-            return result; }, args);
     }
 
     return 0;
